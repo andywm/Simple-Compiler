@@ -1,0 +1,163 @@
+/*    file:     SPL01skeleton.l */
+/*    author:   Peter Parsons   */
+/*    date:     February 1997   */
+/*    Revision: BCT Nov 13     - Added CR */
+
+/* Skeleton lex file that can be used */
+/* This file shows how a symbol table can be linked to a lexer 
+
+   Do not use this until you need to, and understand some
+   of the material on the Symbol Table                      */
+
+/* Declare Symbol Table Type and Array as imported types */
+%{
+#include <string.h>
+#ifdef PRINT
+#define TOKEN(symbol_type, token_) symbol_type != "number"? printf("%s:%s\n",symbol_type, token_) : printf("%s:%d\n", symbol_type ,atoi(token_));
+#else
+#define TOKEN(symbol_type, token_) return token_;
+#define TOKEN_SPECIAL(symbol) return symbol;
+#define TOKEN_NUMBERCONST(token_) return NUMBER;
+#define TOKEN_CHARCONST(token_) return CHARLITERAL;
+#endif
+extern SYMTABNODEPTR symTab[SYMTABSIZE];
+extern int currentSymTabSize;
+%}
+
+delim [ \t\n]
+ws {delim}+
+letter [A-Za-z]
+digit [0-9]
+id {letter}({letter}|{digit})*
+number {digit}+
+charconst '{letter}*'
+
+%%
+
+{ws} ; /* white space, do nothing */
+ENDP TOKEN("keyword", ENDP);
+DECLARATIONS TOKEN("keyword", DECLARATIONS);
+CODE TOKEN("keyword", CODE);
+OF TOKEN("keyword", OF);
+TYPE TOKEN("keyword", TYPE);
+CHARACTER TOKEN("type", CHARACTER);
+INTEGER TOKEN("type", INTEGER);
+REAL TOKEN("type", REAL);
+IF TOKEN("keyword", IF);
+THEN TOKEN("keyword", THEN);
+ELSE TOKEN("keyword", ELSE);
+ENDIF TOKEN("keyword", ENDIF);
+DO TOKEN("keyword", DO);
+ENDDO TOKEN("keyword", ENDDO);
+WHILE TOKEN("keyword", WHILE);
+ENDWHILE TOKEN("keyword", ENDWHILE);
+FOR TOKEN("keyword", FOR);
+IS TOKEN("keyword", IS);
+BY TOKEN("keyword", BY);
+TO TOKEN("keyword", TO);
+ENDFOR TOKEN("keyword", ENDFOR);
+WRITE TOKEN("keyword", WRITE);
+READ TOKEN("keyword", READ);
+NEWLINE TOKEN("keyword", NEWLINE);
+AND TOKEN("comparator", AND);
+OR TOKEN("comparator", OR);
+NOT TOKEN("comparator", NOT);
+"=" TOKEN("relop", ET);
+"<>" TOKEN("relop", NET);
+"<" TOKEN("relop", LT);
+">" TOKEN("relop", GT);
+"<"= TOKEN("relop", LTET);
+">"= TOKEN("relop", GTET);
+"+" TOKEN("binaryOp", ADD);
+"-" TOKEN("binaryOp", MINUS);
+"/" TOKEN("binaryOp", DIVIDE);
+"*" TOKEN("binaryOp", MULTIPLY);
+"(" TOKEN("bracket", LCBRAC);
+")" TOKEN("bracket", RCBRAC);
+"->" TOKEN("binaryOp", ASSIGN);
+"." TOKEN("point", POINT);
+"," TOKEN("seqsep", COMMA);
+";" TOKEN("seperator", SEMICOLON);
+":" TOKEN("seperator", COLON);
+
+{id} TOKEN_ID(yytext); 
+{number} TOKEN_NUMBERCONST(yytext);
+{charconst} TOKEN_CHARCONST (yytext);
+
+{id}	{
+				#ifndef PRINT
+                  yylval.iVal = installId(yytext);
+                #endif
+                  TOEKN_SPECIAL(IDENTIFIER);
+		};
+
+{number}         {
+				#ifndef PRINT 
+                   yylval.iVal = 0l - atol(yytext);
+				#endif
+				   TOEKN_SPECIAL(NUMBER);
+                  }
+
+
+%%
+
+/* Here is the code for the library of symbol table routines */
+
+/* code for a simple symbol table, which is an array of pointers to
+   structs, each of which contains an identifier.
+*/
+
+
+SYMTABNODEPTR newSymTabNode()
+{
+    return ((SYMTABNODEPTR)malloc(sizeof(SYMTABNODE)));
+}
+
+
+/* Look up an identifier in the symbol table, if its there return
+   its index.  If its not there, put it in the end position,
+   as long as the table isn't full, and return its index.
+*/
+
+int installId(char *id) 
+{
+    extern SYMTABNODEPTR symTab[SYMTABSIZE]; 
+    extern int currentSymTabSize;
+    int index;
+
+    index = lookup(id);
+    if (index >= 0)
+    {
+        return (index);
+    }
+    else 
+       if (currentSymTabSize >= SYMTABSIZE) 
+          /* SYMTAB is full */
+          return (NOTHING) ;
+    else 
+    {
+       symTab[currentSymTabSize] = newSymTabNode();
+       /* Recommended code for preventing buffer overrun on bounded strings */
+       strncpy(symTab[currentSymTabSize]->identifier,id,IDLENGTH);
+       symTab[currentSymTabSize]->identifier[IDLENGTH-1] = '\0';
+       return(currentSymTabSize++);
+    }
+}
+
+int lookup(char *s)
+{
+    extern SYMTABNODEPTR symTab[SYMTABSIZE];
+    extern int currentSymTabSize;
+    int i;
+
+    for(i=0; i<currentSymTabSize; i++)
+    {
+        if(strcmp(s,symTab[i]->identifier) == 0)
+        {
+            return (i);
+        }
+    }
+    return (-1);    
+}
+
+
